@@ -47,7 +47,7 @@ export async function GET() {
     const currentMonthRating = calculateAverageRating(currentMonthFeedbacks)
     const previousMonthRating = calculateAverageRating(previousMonthFeedbacks)
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       recentFeedbacks: recentFeedbacks.map(f => ({
         ...f,
         createdAt: f.createdAt.toISOString()
@@ -62,6 +62,13 @@ export async function GET() {
         ratingDiff: currentMonthRating - previousMonthRating
       }
     })
+
+    // Set cache control headers to prevent caching
+    response.headers.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate')
+    response.headers.set('Pragma', 'no-cache')
+    response.headers.set('Expires', '0')
+
+    return response
   } catch (error) {
     console.error('Error fetching dashboard data:', error)
     return NextResponse.json(

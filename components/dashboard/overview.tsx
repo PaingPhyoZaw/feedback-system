@@ -38,15 +38,17 @@ export function Overview({ feedbacks: initialFeedbacks, isLoading: externalLoadi
       }
     }
 
-    // Initial fetch
-    fetchFeedbacks()
+    // Only fetch if no initial data is provided
+    if (!initialFeedbacks || initialFeedbacks.length === 0) {
+      fetchFeedbacks()
+    }
 
     // Set up polling every 30 seconds
     const intervalId = setInterval(fetchFeedbacks, 30000)
 
     // Cleanup interval on unmount
     return () => clearInterval(intervalId)
-  }, [])
+  }, [initialFeedbacks])
 
   const processData = () => {
     const today = new Date()
