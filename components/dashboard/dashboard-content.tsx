@@ -38,7 +38,9 @@ export function DashboardContent() {
     const fetchDashboardData = async () => {
       try {
         setIsLoading(true)
-        const response = await fetch('/api/dashboard')
+        const response = await fetch(`/api/dashboard?t=${Date.now()}`, {
+                                        cache: 'no-store',
+                                    });
         const dashboardData = await response.json()
         setData(dashboardData)
       } catch (error) {
