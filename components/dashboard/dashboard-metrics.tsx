@@ -6,14 +6,35 @@ import { StarIcon, MessageSquare, TrendingUp } from "lucide-react"
 interface Props {
   totalFeedbacks: number
   averageRating: number
-  latestFeedback: {
-    createdAt: string
-  } | null
+  currentMonthCount: number
+  previousMonthCount: number
+  monthlyRating: number
+  ratingDiff: number
 }
 
-export function DashboardMetrics({ totalFeedbacks, averageRating }: Props) {
-  // Calculate month-over-month growth (simulated for now)
-  const monthlyGrowth = "+12.5%"
+export function DashboardMetrics({ 
+  totalFeedbacks, 
+  averageRating, 
+  currentMonthCount,
+  previousMonthCount,
+  monthlyRating,
+  ratingDiff 
+}: Props) {
+  const calculateGrowth = () => {
+    if (previousMonthCount === 0 && currentMonthCount > 0) {
+      // First month with data
+      return `+${currentMonthCount * 100}%`
+    }
+    if (previousMonthCount === 0 && currentMonthCount === 0) {
+      // No data yet
+      return "0%"
+    }
+    const growth = ((currentMonthCount - previousMonthCount) / previousMonthCount) * 100
+    return `${growth > 0 ? '+' : ''}${growth.toFixed(1)}%`
+  }
+
+  const monthlyGrowth = calculateGrowth()
+  const growthColor = monthlyGrowth.startsWith('+') ? 'text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/50' : 'text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/50'
 
   return (
     <div className="grid gap-4 md:grid-cols-3">
@@ -30,7 +51,7 @@ export function DashboardMetrics({ totalFeedbacks, averageRating }: Props) {
                 Total feedback collected
               </p>
             </div>
-            <div className="text-sm text-green-600 dark:text-green-400 bg-green-50 dark:bg-green-950/50 px-2.5 py-0.5 rounded-full">
+            <div className={`text-sm px-2.5 py-0.5 rounded-full ${growthColor}`}>
               {monthlyGrowth}
             </div>
           </div>
@@ -74,14 +95,18 @@ export function DashboardMetrics({ totalFeedbacks, averageRating }: Props) {
         <CardContent>
           <div className="flex items-center justify-between">
             <div>
-              <div className="text-2xl font-bold">4.2</div>
+              <div className="text-2xl font-bold">{monthlyRating.toFixed(1)}</div>
               <p className="text-xs text-muted-foreground">
                 This month's average rating
               </p>
             </div>
             <div className="flex items-center space-x-1">
-              <span className="text-sm text-green-600 dark:text-green-400">↑</span>
-              <span className="text-sm text-green-600 dark:text-green-400">0.3</span>
+              <span className="text-sm text-green-600 dark:text-green-400">
+                {ratingDiff >= 0 ? '↑' : '↓'}
+              </span>
+              <span className="text-sm text-green-600 dark:text-green-400">
+                {Math.abs(ratingDiff).toFixed(1)}
+              </span>
             </div>
           </div>
         </CardContent>
