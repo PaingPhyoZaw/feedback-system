@@ -41,10 +41,23 @@ export function Overview({ feedbacks: initialFeedbacks, isLoading: externalLoadi
     // Fetch initial data
     fetchFeedbacks()
 
-    // Set up polling interval
-    const interval = setInterval(fetchFeedbacks, 30000) // Poll every 30 seconds
+    // Set up WebSocket connection
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+    const wsUrl = `${protocol}//${window.location.host}/api/feedback/ws`
+    const ws = new WebSocket(wsUrl)
 
-    return () => clearInterval(interval)
+    ws.onmessage = (event) => {
+      const newFeedback = JSON.parse(event.data)
+      setFeedbacks(prev => [...prev, newFeedback])
+    }
+
+    ws.onerror = (error) => {
+      console.error('WebSocket error:', error)
+    }
+
+    return () => {
+      ws.close()
+    }
   }, [])
 
   const processData = () => {
