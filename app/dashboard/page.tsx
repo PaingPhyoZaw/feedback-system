@@ -55,6 +55,10 @@ async function getFeedbackData() {
       ...f,
       createdAt: f.createdAt.toISOString()
     })),
+    feedbacks: feedbacks.map(f => ({
+      ...f,
+      createdAt: f.createdAt.toISOString()
+    })),
     ratingData,
     metrics: {
       totalFeedbacks,

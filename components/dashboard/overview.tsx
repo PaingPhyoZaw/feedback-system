@@ -1,7 +1,8 @@
 "use client"
 
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from "recharts"
-import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval } from "date-fns"
+import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, utcToZonedTime } from "date-fns"
+import { zonedTimeToUtc } from "date-fns-tz"
 
 interface Feedback {
   id: number
@@ -20,15 +21,25 @@ interface OverviewProps {
 export function Overview({ feedbacks }: OverviewProps) {
   const processData = () => {
     const today = new Date()
+    const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
+    const currentMonthStart = zonedTimeToUtc(startOfMonth(today), timezone)
     const interval = eachDayOfInterval({
-      start: startOfMonth(today),
-      end: endOfMonth(today)
+      start: currentMonthStart,
+      end: zonedTimeToUtc(endOfMonth(today), timezone)
+    })
+
+    // Filter feedbacks for current month
+    const currentMonthFeedbacks = feedbacks.filter(feedback => {
+      const feedbackDate = parseISO(feedback.createdAt)
+      return feedbackDate >= currentMonthStart
     })
 
     const dailyData = interval.map(date => {
-      const dayFeedbacks = feedbacks.filter(feedback => {
+      const zonedDate = utcToZonedTime(date, timezone)
+      const dayFeedbacks = currentMonthFeedbacks.filter(feedback => {
         const feedbackDate = parseISO(feedback.createdAt)
-        return format(feedbackDate, 'yyyy-MM-dd') === format(date, 'yyyy-MM-dd')
+        const zonedFeedbackDate = utcToZonedTime(feedbackDate, timezone)
+        return format(zonedFeedbackDate, 'yyyy-MM-dd') === format(zonedDate, 'yyyy-MM-dd')
       })
 
       const avgRating = dayFeedbacks.length > 0
@@ -41,7 +52,7 @@ export function Overview({ feedbacks }: OverviewProps) {
         : 0
 
       return {
-        date: format(date, 'MMM dd'),
+        date: format(zonedDate, 'MMM dd'),
         count: dayFeedbacks.length,
         avgRating: Number(avgRating)
       }
