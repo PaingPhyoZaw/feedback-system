@@ -28,7 +28,7 @@ export function Overview({ feedbacks: initialFeedbacks, isLoading: externalLoadi
     const fetchFeedbacks = async () => {
       try {
         setIsLoading(true)
-        const response = await fetch('/api/feedback')
+        const response = await fetch('/api/feedback/overview')
         const data = await response.json()
         setFeedbacks(data)
       } catch (error) {
@@ -38,7 +38,14 @@ export function Overview({ feedbacks: initialFeedbacks, isLoading: externalLoadi
       }
     }
 
+    // Initial fetch
     fetchFeedbacks()
+
+    // Set up polling every 30 seconds
+    const intervalId = setInterval(fetchFeedbacks, 30000)
+
+    // Cleanup interval on unmount
+    return () => clearInterval(intervalId)
   }, [])
 
   const processData = () => {
