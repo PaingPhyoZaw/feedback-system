@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { Button } from "@/components/ui/button"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface ServiceCenter {
   id: string
@@ -188,14 +189,29 @@ export function FeedbackListContent() {
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="h-32 text-center text-gray-500 dark:text-gray-400">
-                    <div className="flex flex-col items-center justify-center space-y-2">
-                      <div className="w-6 h-6 border-2 border-t-blue-500 rounded-full animate-spin" />
-                      <span className="text-sm font-medium">Loading feedback...</span>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <>
+                  {[...Array(5)].map((_, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        <div className="flex flex-col gap-2">
+                          <Skeleton className="h-4 w-24" />
+                          <Skeleton className="h-3 w-16" />
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex flex-col gap-2">
+                          <Skeleton className="h-4 w-32" />
+                          <Skeleton className="h-3 w-24" />
+                        </div>
+                      </TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-48" /></TableCell>
+                    </TableRow>
+                  ))}
+                </>
               ) : feedbacks.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={7} className="h-32 text-center text-gray-500 dark:text-gray-400">

@@ -2,6 +2,7 @@
 
 import { DateRangePicker } from "@/components/date-range-picker"
 import { Card, Title, Text } from "@tremor/react"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   LineChart,
   Line,
@@ -48,8 +49,32 @@ export default function ReportsPage() {
 
   if (loading || !data) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div className="text-lg">Loading reports...</div>
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <div className="space-y-2">
+            <Skeleton className="h-8 w-48" />
+            <Skeleton className="h-4 w-32" />
+          </div>
+          <div className="flex items-center gap-4">
+            <Skeleton className="h-10 w-[200px]" />
+            <Skeleton className="h-10 w-[300px]" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <Card>
+            <div className="p-6">
+              <Skeleton className="h-7 w-40 mb-6" />
+              <Skeleton className="h-[300px] w-full" />
+            </div>
+          </Card>
+          <Card>
+            <div className="p-6">
+              <Skeleton className="h-7 w-40 mb-6" />
+              <Skeleton className="h-[300px] w-full" />
+            </div>
+          </Card>
+        </div>
       </div>
     )
   }

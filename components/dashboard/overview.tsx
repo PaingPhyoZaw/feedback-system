@@ -3,6 +3,7 @@
 import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } from "recharts"
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, utcToZonedTime } from "date-fns"
 import { zonedTimeToUtc } from "date-fns-tz"
+import { Skeleton } from "@/components/ui/skeleton"
 
 interface Feedback {
   id: number
@@ -18,7 +19,7 @@ interface OverviewProps {
   feedbacks: Feedback[]
 }
 
-export function Overview({ feedbacks }: OverviewProps) {
+export function Overview({ feedbacks, isLoading = false }: OverviewProps & { isLoading?: boolean }) {
   const processData = () => {
     const today = new Date()
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -59,6 +60,17 @@ export function Overview({ feedbacks }: OverviewProps) {
     })
 
     return dailyData
+  }
+
+  if (isLoading) {
+    return (
+      <div className="w-full h-[350px] bg-card rounded-lg p-6">
+        <div className="space-y-4">
+          <Skeleton className="h-4 w-32" />
+          <Skeleton className="h-[280px] w-full" />
+        </div>
+      </div>
+    )
   }
 
   return (
