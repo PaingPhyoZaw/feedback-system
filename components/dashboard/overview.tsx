@@ -4,6 +4,7 @@ import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip, Legend } fro
 import { format, parseISO, startOfMonth, endOfMonth, eachDayOfInterval, utcToZonedTime } from "date-fns"
 import { zonedTimeToUtc } from "date-fns-tz"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useEffect, useState } from "react"
 
 interface Feedback {
   id: number
@@ -19,7 +20,33 @@ interface OverviewProps {
   feedbacks: Feedback[]
 }
 
-export function Overview({ feedbacks, isLoading = false }: OverviewProps & { isLoading?: boolean }) {
+export function Overview({ feedbacks: initialFeedbacks, isLoading: externalLoading = false }: OverviewProps & { isLoading?: boolean }) {
+  const [feedbacks, setFeedbacks] = useState(initialFeedbacks)
+  const [isLoading, setIsLoading] = useState(false)
+
+  useEffect(() => {
+    const fetchFeedbacks = async () => {
+      try {
+        setIsLoading(true)
+        const response = await fetch('/api/feedback')
+        const data = await response.json()
+        setFeedbacks(data)
+      } catch (error) {
+        console.error('Error fetching feedbacks:', error)
+      } finally {
+        setIsLoading(false)
+      }
+    }
+
+    // Fetch initial data
+    fetchFeedbacks()
+
+    // Set up polling interval
+    const interval = setInterval(fetchFeedbacks, 30000) // Poll every 30 seconds
+
+    return () => clearInterval(interval)
+  }, [])
+
   const processData = () => {
     const today = new Date()
     const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone
@@ -62,7 +89,7 @@ export function Overview({ feedbacks, isLoading = false }: OverviewProps & { isL
     return dailyData
   }
 
-  if (isLoading) {
+  if (isLoading || externalLoading) {
     return (
       <div className="w-full h-[350px] bg-card rounded-lg p-6">
         <div className="space-y-4">
