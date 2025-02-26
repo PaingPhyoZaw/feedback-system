@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma'
 import { NextResponse } from 'next/server'
+import { startOfDay, endOfDay } from 'date-fns'
 
 export async function POST(request: Request) {
   try {
@@ -28,19 +29,49 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
-    const feedbacks = await prisma.feedback.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
-      include: {
-        serviceCenter: true
-      },
-      take: 100
-    })
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
+    const centerId = searchParams.get('centerId')
+    const from = searchParams.get('from')
+    const to = searchParams.get('to')
 
-    return NextResponse.json(feedbacks)
+    const where = {
+      ...(centerId && { serviceCenterId: centerId }),
+      ...(from && to && {
+        createdAt: {
+          gte: startOfDay(new Date(from)),
+          lte: endOfDay(new Date(to)),
+        },
+      }),
+    }
+
+    const [feedbacks, total] = await Promise.all([
+      prisma.feedback.findMany({
+        where,
+        orderBy: {
+          createdAt: "desc",
+        },
+        include: {
+          serviceCenter: true
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prisma.feedback.count({ where })
+    ])
+
+    return NextResponse.json({
+      feedbacks,
+      pagination: {
+        total,
+        pages: Math.ceil(total / limit),
+        page,
+        limit
+      }
+    })
   } catch (error) {
     console.error("Error fetching feedback:", error)
     return NextResponse.json(

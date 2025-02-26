@@ -13,7 +13,21 @@ import {
 import { Card } from "@/components/ui/card"
 import { DateRangePicker } from "@/components/date-range-picker"
 import type { DateRange } from "react-day-picker"
-import { Star } from "lucide-react"
+import { Star, ChevronLeft, ChevronRight, Download } from "lucide-react"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import { Button } from "@/components/ui/button"
+
+interface ServiceCenter {
+  id: string
+  name: string
+  location: string
+}
 
 interface Feedback {
   id: string
@@ -23,12 +37,42 @@ interface Feedback {
   feeRating: number
   durationRating: number
   comment: string | null
+  serviceCenter: ServiceCenter
+}
+
+interface PaginationInfo {
+  total: number
+  pages: number
+  page: number
+  limit: number
 }
 
 export function FeedbackListContent() {
   const [feedbacks, setFeedbacks] = useState<Feedback[]>([])
+  const [serviceCenters, setServiceCenters] = useState<ServiceCenter[]>([])
+  const [selectedCenter, setSelectedCenter] = useState<string>("all")
   const [date, setDate] = useState<DateRange | undefined>()
   const [loading, setLoading] = useState(true)
+  const [pagination, setPagination] = useState<PaginationInfo>({
+    total: 0,
+    pages: 1,
+    page: 1,
+    limit: 10
+  })
+
+  useEffect(() => {
+    const fetchServiceCenters = async () => {
+      try {
+        const response = await fetch('/api/service-centers')
+        const data = await response.json()
+        setServiceCenters(data)
+      } catch (error) {
+        console.error('Error fetching service centers:', error)
+      }
+    }
+
+    fetchServiceCenters()
+  }, [])
 
   useEffect(() => {
     const fetchFeedbacks = async () => {
@@ -37,10 +81,14 @@ export function FeedbackListContent() {
         const queryParams = new URLSearchParams()
         if (date?.from) queryParams.append('from', date.from.toISOString())
         if (date?.to) queryParams.append('to', date.to.toISOString())
+        if (selectedCenter !== 'all') queryParams.append('centerId', selectedCenter)
+        queryParams.append('page', pagination.page.toString())
+        queryParams.append('limit', pagination.limit.toString())
         
         const response = await fetch(`/api/feedback?${queryParams}`)
         const data = await response.json()
-        setFeedbacks(data)
+        setFeedbacks(data.feedbacks)
+        setPagination(data.pagination)
       } catch (error) {
         console.error('Error fetching feedback:', error)
       } finally {
@@ -49,7 +97,7 @@ export function FeedbackListContent() {
     }
 
     fetchFeedbacks()
-  }, [date])
+  }, [date, selectedCenter, pagination.page, pagination.limit])
 
   const renderStars = (rating: number) => {
     return (
@@ -69,13 +117,59 @@ export function FeedbackListContent() {
     )
   }
 
+  const handleExport = async () => {
+    try {
+      const queryParams = new URLSearchParams()
+      if (date?.from) queryParams.append('from', date.from.toISOString())
+      if (date?.to) queryParams.append('to', date.to.toISOString())
+      if (selectedCenter !== 'all') queryParams.append('centerId', selectedCenter)
+      
+      const response = await fetch(`/api/feedback/export?${queryParams}`)
+      const blob = await response.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `feedback-list-${format(new Date(), 'yyyy-MM-dd')}.csv`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+    } catch (error) {
+      console.error('Error exporting feedback:', error)
+    }
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-semibold tracking-tight text-gray-900 dark:text-white">
           Feedback List
         </h1>
-        <DateRangePicker date={date} setDate={setDate} />
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleExport}
+            className="flex items-center gap-2"
+          >
+            <Download className="h-4 w-4" />
+            Export
+          </Button>
+          <Select value={selectedCenter} onValueChange={setSelectedCenter}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="All Service Centers" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Service Centers</SelectItem>
+              {serviceCenters.map((center) => (
+                <SelectItem key={center.id} value={center.id}>
+                  {center.name} - {center.location}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <DateRangePicker date={date} setDate={setDate} />
+        </div>
       </div>
 
       <Card className="bg-white dark:bg-gray-800 shadow-sm">
@@ -84,6 +178,7 @@ export function FeedbackListContent() {
             <TableHeader>
               <TableRow className="border-b dark:border-gray-700">
                 <TableHead className="font-medium text-gray-700 dark:text-gray-300">Date</TableHead>
+                <TableHead className="font-medium text-gray-700 dark:text-gray-300">Service Center</TableHead>
                 <TableHead className="font-medium text-gray-700 dark:text-gray-300">Service</TableHead>
                 <TableHead className="font-medium text-gray-700 dark:text-gray-300">Condition</TableHead>
                 <TableHead className="font-medium text-gray-700 dark:text-gray-300">Fee</TableHead>
@@ -94,7 +189,7 @@ export function FeedbackListContent() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-32 text-center text-gray-500 dark:text-gray-400">
+                  <TableCell colSpan={7} className="h-32 text-center text-gray-500 dark:text-gray-400">
                     <div className="flex flex-col items-center justify-center space-y-2">
                       <div className="w-6 h-6 border-2 border-t-blue-500 rounded-full animate-spin" />
                       <span className="text-sm font-medium">Loading feedback...</span>
@@ -103,27 +198,35 @@ export function FeedbackListContent() {
                 </TableRow>
               ) : feedbacks.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="h-32 text-center">
-                    <div className="flex flex-col items-center justify-center space-y-2 text-gray-500 dark:text-gray-400">
-                      <span className="text-sm font-medium">No feedback found for the selected date range</span>
-                    </div>
+                  <TableCell colSpan={7} className="h-32 text-center text-gray-500 dark:text-gray-400">
+                    No feedback found
                   </TableCell>
                 </TableRow>
               ) : (
                 feedbacks.map((feedback) => (
-                  <TableRow 
-                    key={feedback.id}
-                    className="border-b dark:border-gray-700 transition-colors hover:bg-gray-50/50 dark:hover:bg-gray-700/50"
-                  >
-                    <TableCell className="font-medium text-gray-900 dark:text-gray-100">
-                      {format(new Date(feedback.createdAt), "MMM d, yyyy")}
+                  <TableRow key={feedback.id} className="border-b dark:border-gray-700">
+                    <TableCell>
+                      <div className="flex flex-col">
+                        <span className="font-medium">
+                          {format(new Date(feedback.createdAt), "MMM d, yyyy")}
+                        </span>
+                        <span className="text-sm text-gray-500">
+                          {format(new Date(feedback.createdAt), "h:mm a")}
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div>
+                        <div className="font-medium">{feedback.serviceCenter.name}</div>
+                        <div className="text-sm text-gray-500">{feedback.serviceCenter.location}</div>
+                      </div>
                     </TableCell>
                     <TableCell>{renderStars(feedback.serviceRating)}</TableCell>
                     <TableCell>{renderStars(feedback.conditionRating)}</TableCell>
                     <TableCell>{renderStars(feedback.feeRating)}</TableCell>
                     <TableCell>{renderStars(feedback.durationRating)}</TableCell>
-                    <TableCell className="max-w-md truncate text-gray-700 dark:text-gray-300">
-                      {feedback.comment || 'No comment provided'}
+                    <TableCell className="max-w-xs truncate">
+                      {feedback.comment || "-"}
                     </TableCell>
                   </TableRow>
                 ))
@@ -131,6 +234,36 @@ export function FeedbackListContent() {
             </TableBody>
           </Table>
         </div>
+
+        {!loading && feedbacks.length > 0 && (
+          <div className="flex items-center justify-between px-4 py-4 border-t dark:border-gray-700">
+            <div className="text-sm text-gray-700 dark:text-gray-300">
+              Showing {((pagination.page - 1) * pagination.limit) + 1} to{" "}
+              {Math.min(pagination.page * pagination.limit, pagination.total)} of{" "}
+              {pagination.total} results
+            </div>
+            <div className="flex items-center space-x-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPagination(prev => ({ ...prev, page: prev.page - 1 }))}
+                disabled={pagination.page === 1}
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Previous
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPagination(prev => ({ ...prev, page: prev.page + 1 }))}
+                disabled={pagination.page === pagination.pages}
+              >
+                Next
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   )

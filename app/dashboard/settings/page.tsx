@@ -114,43 +114,6 @@ export default function Settings() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Settings</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <form onSubmit={handleSettingsSave} className="space-y-4">
-            <div>
-              <Label htmlFor="adminEmail">Admin Email</Label>
-              <Input
-                id="adminEmail"
-                value={settings.adminEmail || ''}
-                onChange={(e) => setSettings({ ...settings, adminEmail: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="notificationEmail">Notification Email</Label>
-              <Input
-                id="notificationEmail"
-                value={settings.notificationEmail || ''}
-                onChange={(e) => setSettings({ ...settings, notificationEmail: e.target.value })}
-              />
-            </div>
-            <div>
-              <Label htmlFor="formTitle">Form Title</Label>
-              <Input
-                id="formTitle"
-                value={settings.feedbackFormTitle || ''}
-                onChange={(e) => setSettings({ ...settings, feedbackFormTitle: e.target.value })}
-              />
-            </div>
-            <Button type="submit" disabled={isLoading}>
-              {isLoading ? 'Saving...' : 'Save Settings'}
-            </Button>
-          </form>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
           <CardTitle>Users</CardTitle>
         </CardHeader>
         <CardContent>
@@ -202,8 +165,8 @@ export default function Settings() {
                       <SelectValue placeholder="Select role" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="USER">User</SelectItem>
-                      <SelectItem value="ADMIN">Admin</SelectItem>
+                      <SelectItem value="user">User</SelectItem>
+                      <SelectItem value="admin">Admin</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

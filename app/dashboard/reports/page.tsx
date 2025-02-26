@@ -1,17 +1,7 @@
 "use client"
 
-import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { DateRangePicker } from "@/components/date-range-picker"
-import { DateRange } from "react-day-picker"
-import { startOfMonth, endOfMonth } from "date-fns"
+import { Card, Title, Text } from "@tremor/react"
 import {
   LineChart,
   Line,
@@ -24,180 +14,404 @@ import {
   Legend,
   ResponsiveContainer,
 } from "recharts"
-
-interface ServiceCenter {
-  id: string
-  name: string
-  location: string
-  manager: string
-}
-
-interface ServiceCenterStats {
-  id: string
-  name: string
-  totalFeedback: number
-  averageRating: number
-  serviceRating: number
-  conditionRating: number
-  feeRating: number
-  durationRating: number
-  monthlyTrends: {
-    month: string
-    count: number
-    avgRating: number
-  }[]
-}
+import { addDays, format, parseISO, startOfDay } from "date-fns"
+import { useState, useEffect } from "react"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 export default function ReportsPage() {
-  const [selectedCenter, setSelectedCenter] = useState<string>("all")
-  const [date, setDate] = useState<DateRange | undefined>({
-    from: startOfMonth(new Date()),
-    to: endOfMonth(new Date()),
+  const [date, setDate] = useState({
+    from: addDays(new Date(), -30),
+    to: new Date(),
   })
-
-  // This will be fetched from API
-  const [stats, setStats] = useState<ServiceCenterStats[]>([])
+  const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
+  const [selectedCenter, setSelectedCenter] = useState("all")
+
+  const fetchReportData = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch(
+        `/api/reports?startDate=${date.from?.toISOString()}&endDate=${date.to?.toISOString()}&centerId=${selectedCenter}`
+      )
+      const jsonData = await res.json()
+      setData(jsonData)
+    } catch (error) {
+      console.error("Error fetching report data:", error)
+    }
+    setLoading(false)
+  }
+
+  useEffect(() => {
+    fetchReportData()
+  }, [date, selectedCenter])
+
+  if (loading || !data) {
+    return (
+      <div className="flex h-screen items-center justify-center">
+        <div className="text-lg">Loading reports...</div>
+      </div>
+    )
+  }
+
+  const { overallStats, centerStats, feedbacks, serviceCenters } = data
+
+  // Calculate month-over-month changes
+  const calculateMoMChange = (current, previous) => {
+    return previous ? ((current - previous) / previous * 100).toFixed(1) : 0
+  }
+
+  // Selected center stats
+  const selectedCenterStats = selectedCenter === "all" 
+    ? overallStats 
+    : centerStats.find(c => c.id === selectedCenter)
+
+  // Previous month stats (mock data)
+  const previousMonthStats = {
+    totalFeedback: overallStats.totalFeedback * 0.8,
+    averageRating: overallStats.averageRating - 0.2,
+    responseRate: overallStats.responseRate - 3,
+    customerSatisfaction: overallStats.customerSatisfaction - 2
+  }
+
+  // Prepare time series data for the entire month
+  const startOfMonth = startOfDay(new Date(date.from))
+  const endOfMonth = date.to
+  
+  const timeSeriesData = []
+  let currentDate = startOfMonth
+  
+  while (currentDate <= endOfMonth) {
+    const dateStr = format(currentDate, 'MMM dd')
+    const dayFeedbacks = feedbacks.filter(f => 
+      format(parseISO(f.createdAt), 'MMM dd') === dateStr
+    )
+    
+    const dayData = {
+      date: dateStr,
+      count: dayFeedbacks.length,
+      avgRating: dayFeedbacks.length > 0 
+        ? Math.round(dayFeedbacks.reduce((acc, f) => {
+            const rating = (f.serviceRating + f.conditionRating + 
+                          f.feeRating + f.durationRating) / 4
+            return acc + rating
+          }, 0) / dayFeedbacks.length)
+        : 0
+    }
+    
+    timeSeriesData.push(dayData)
+    currentDate = addDays(currentDate, 1)
+  }
+
+  // Prepare center stats with rounded values
+  const roundedCenterStats = centerStats.map(center => ({
+    ...center,
+    averageRating: Math.round(center.averageRating),
+    responseRate: Math.round(center.responseRate),
+    customerSatisfaction: Math.round(center.customerSatisfaction)
+  }))
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Service Center Reports</h2>
-        <div className="flex flex-col gap-2 md:flex-row md:items-center md:gap-4">
+    <div className="max-w-[1600px] mx-auto">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
+        <div>
+          <h1 className="text-2xl font-bold">Service Center Reports</h1>
+          <p className="text-muted-foreground">
+            {selectedCenter === "all" 
+              ? "Overview of all service centers" 
+              : `Details for ${serviceCenters.find(c => c.id === selectedCenter)?.name}`}
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row gap-3">
           <Select value={selectedCenter} onValueChange={setSelectedCenter}>
             <SelectTrigger className="w-[200px]">
               <SelectValue placeholder="Select Service Center" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Centers</SelectItem>
-              {/* Map through service centers */}
+              {serviceCenters.map(center => (
+                <SelectItem key={center.id} value={center.id}>
+                  {center.name}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
           <DateRangePicker date={date} setDate={setDate} />
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Feedback</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">1,234</div>
-            <p className="text-xs text-muted-foreground">
-              +20.1% from last month
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Average Rating</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">4.5</div>
-            <p className="text-xs text-muted-foreground">
-              +2% from last month
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Response Rate</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">92%</div>
-            <p className="text-xs text-muted-foreground">
-              +5% from last month
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Customer Satisfaction</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">89%</div>
-            <p className="text-xs text-muted-foreground">
-              +1.2% from last month
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="col-span-1">
-          <CardHeader>
-            <CardTitle>Rating Distribution</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
-              <BarChart data={[
-                { name: 'Service', rating: 4.5 },
-                { name: 'Condition', rating: 4.2 },
-                { name: 'Fee', rating: 4.0 },
-                { name: 'Duration', rating: 4.3 },
-              ]}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" />
-                <YAxis domain={[0, 5]} />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="rating" fill="#8884d8" />
-              </BarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-
-        <Card className="col-span-1">
-          <CardHeader>
-            <CardTitle>Monthly Trends</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={350}>
-              <LineChart data={[
-                { month: 'Jan', count: 65, rating: 4.2 },
-                { month: 'Feb', count: 75, rating: 4.3 },
-                { month: 'Mar', count: 85, rating: 4.4 },
-              ]}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" />
-                <YAxis yAxisId="left" />
-                <YAxis yAxisId="right" orientation="right" />
-                <Tooltip />
-                <Legend />
-                <Line yAxisId="left" type="monotone" dataKey="count" stroke="#8884d8" />
-                <Line yAxisId="right" type="monotone" dataKey="rating" stroke="#82ca9d" />
-              </LineChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Service Center Comparison</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="relative overflow-x-auto">
-            <table className="w-full text-left text-sm">
-              <thead className="bg-muted text-muted-foreground">
-                <tr>
-                  <th className="p-4">Service Center</th>
-                  <th className="p-4">Total Feedback</th>
-                  <th className="p-4">Avg Rating</th>
-                  <th className="p-4">Service</th>
-                  <th className="p-4">Condition</th>
-                  <th className="p-4">Fee</th>
-                  <th className="p-4">Duration</th>
-                </tr>
-              </thead>
-              <tbody>
-                {/* Map through service center stats */}
-              </tbody>
-            </table>
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <Card className="p-4">
+          <div className="flex flex-col">
+            <Text className="text-sm text-muted-foreground">Total Feedback</Text>
+            <div className="flex items-baseline gap-2">
+              <Text className="text-2xl font-bold">
+                {selectedCenterStats.totalFeedback}
+              </Text>
+              <Text className={`text-sm ${calculateMoMChange(selectedCenterStats.totalFeedback, previousMonthStats.totalFeedback) > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {calculateMoMChange(selectedCenterStats.totalFeedback, previousMonthStats.totalFeedback)}%
+              </Text>
+            </div>
           </div>
-        </CardContent>
-      </Card>
+        </Card>
+        <Card className="p-4">
+          <div className="flex flex-col">
+            <Text className="text-sm text-muted-foreground">Average Rating</Text>
+            <div className="flex items-baseline gap-2">
+              <Text className="text-2xl font-bold">
+                {selectedCenterStats.averageRating.toFixed(1)}
+              </Text>
+              <Text className="text-sm text-muted-foreground">/5</Text>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex flex-col">
+            <Text className="text-sm text-muted-foreground">Response Rate</Text>
+            <div className="flex items-baseline gap-2">
+              <Text className="text-2xl font-bold">
+                {selectedCenterStats.responseRate}%
+              </Text>
+              <Text className={`text-sm ${calculateMoMChange(selectedCenterStats.responseRate, previousMonthStats.responseRate) > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {calculateMoMChange(selectedCenterStats.responseRate, previousMonthStats.responseRate)}%
+              </Text>
+            </div>
+          </div>
+        </Card>
+        <Card className="p-4">
+          <div className="flex flex-col">
+            <Text className="text-sm text-muted-foreground">Customer Satisfaction</Text>
+            <div className="flex items-baseline gap-2">
+              <Text className="text-2xl font-bold">
+                {selectedCenterStats.customerSatisfaction}%
+              </Text>
+              <Text className={`text-sm ${calculateMoMChange(selectedCenterStats.customerSatisfaction, previousMonthStats.customerSatisfaction) > 0 ? 'text-green-500' : 'text-red-500'}`}>
+                {calculateMoMChange(selectedCenterStats.customerSatisfaction, previousMonthStats.customerSatisfaction)}%
+              </Text>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Main Content */}
+      <Tabs defaultValue="trends" className="space-y-4">
+        <TabsList className="w-full border-b justify-start">
+          <TabsTrigger value="trends">Trends</TabsTrigger>
+          <TabsTrigger value="ratings">Ratings</TabsTrigger>
+          <TabsTrigger value="comparison">Comparison</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="trends">
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+            <Card className="p-4">
+              <div className="flex flex-col gap-1 mb-4">
+                <Title className="text-lg">Feedback Volume</Title>
+                <Text className="text-sm text-muted-foreground">
+                  Daily feedback submissions
+                </Text>
+              </div>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={timeSeriesData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 12 }}
+                      interval={2}  // Show every 3rd label to avoid crowding
+                      angle={-15}   // Angle the labels for better readability
+                    />
+                    <YAxis yAxisId="left" tick={{ fontSize: 12 }} />
+                    <Tooltip />
+                    <Legend />
+                    <Line
+                      yAxisId="left"
+                      type="monotone"
+                      dataKey="count"
+                      name="Feedback Count"
+                      stroke="#2563eb"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            <Card className="p-4">
+              <div className="flex flex-col gap-1 mb-4">
+                <Title className="text-lg">Average Ratings</Title>
+                <Text className="text-sm text-muted-foreground">
+                  Daily average rating trends
+                </Text>
+              </div>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={timeSeriesData} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                    <XAxis 
+                      dataKey="date" 
+                      tick={{ fontSize: 12 }}
+                      interval={2}  // Show every 3rd label to avoid crowding
+                      angle={-15}   // Angle the labels for better readability
+                    />
+                    <YAxis 
+                      domain={[0, 5]} 
+                      tick={{ fontSize: 12 }}
+                      tickCount={6}  // Force 6 ticks (0 to 5)
+                    />
+                    <Tooltip />
+                    <Legend />
+                    <Line
+                      type="monotone"
+                      dataKey="avgRating"
+                      name="Average Rating"
+                      stroke="#16a34a"
+                      strokeWidth={2}
+                      dot={false}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="ratings">
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+            <Card className="p-4">
+              <div className="flex flex-col gap-1 mb-4">
+                <Title className="text-lg">Rating Distribution</Title>
+                <Text className="text-sm text-muted-foreground">
+                  Distribution of ratings across categories
+                </Text>
+              </div>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={roundedCenterStats} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{ fontSize: 12 }}
+                      interval={0}
+                      angle={-15}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      domain={[0, 5]}
+                      tickCount={6}
+                    />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="averageRating" name="Average Rating" fill="#2563eb" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            <Card className="p-4">
+              <div className="flex flex-col gap-1 mb-4">
+                <Title className="text-lg">Response Rate</Title>
+                <Text className="text-sm text-muted-foreground">
+                  Response rates by service center (%)
+                </Text>
+              </div>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={roundedCenterStats} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{ fontSize: 12 }}
+                      interval={0}
+                      angle={-15}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      domain={[0, 100]}
+                      tickCount={6}
+                      tickFormatter={(value) => `${value}%`}
+                    />
+                    <Tooltip 
+                      formatter={(value) => [`${value}%`, "Response Rate"]}
+                    />
+                    <Legend />
+                    <Bar 
+                      dataKey="responseRate" 
+                      name="Response Rate" 
+                      fill="#16a34a"
+                      radius={[4, 4, 0, 0]}
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </div>
+        </TabsContent>
+
+        <TabsContent value="comparison">
+          <div className="grid gap-4 grid-cols-1 lg:grid-cols-2">
+            <Card className="p-4">
+              <div className="flex flex-col gap-1 mb-4">
+                <Title className="text-lg">Customer Satisfaction</Title>
+                <Text className="text-sm text-muted-foreground">
+                  Satisfaction scores by service center
+                </Text>
+              </div>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={roundedCenterStats} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{ fontSize: 12 }}
+                      interval={0}
+                      angle={-15}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                      domain={[0, 100]}
+                      tickCount={6}
+                    />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="customerSatisfaction" name="Satisfaction %" fill="#2563eb" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+
+            <Card className="p-4">
+              <div className="flex flex-col gap-1 mb-4">
+                <Title className="text-lg">Total Feedback Volume</Title>
+                <Text className="text-sm text-muted-foreground">
+                  Total feedback received by center
+                </Text>
+              </div>
+              <div className="h-[280px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={roundedCenterStats} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                    <XAxis 
+                      dataKey="name" 
+                      tick={{ fontSize: 12 }}
+                      interval={0}
+                      angle={-15}
+                    />
+                    <YAxis 
+                      tick={{ fontSize: 12 }}
+                    />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="totalFeedback" name="Total Feedback" fill="#16a34a" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </Card>
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

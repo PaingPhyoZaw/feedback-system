@@ -51,30 +51,71 @@ export async function GET(request: Request) {
         )
       }
 
+      // Calculate response rate for this center
+      // For example: if we expect 10 feedbacks per day and we got 7, response rate would be 70%
+      const daysInRange = startDate && endDate 
+        ? Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
+        : 30 // default to 30 days if no date range
+      
+      const expectedFeedbacksPerDay = 3 // You can adjust this based on your business requirements
+      const expectedTotal = daysInRange * expectedFeedbacksPerDay
+      const responseRate = Math.round((centerFeedbacks.length / expectedTotal) * 100)
+
       return {
         id: center.id,
         name: center.name,
         location: center.location,
-        totalFeedback: center._count.feedbacks,
+        totalFeedback: centerFeedbacks.length,
+        responseRate: responseRate,
         averageRating:
+          Math.round(
+            (calculateAverage("serviceRating") +
+              calculateAverage("conditionRating") +
+              calculateAverage("feeRating") +
+              calculateAverage("durationRating")) /
+            4
+          ),
+        serviceRating: Math.round(calculateAverage("serviceRating")),
+        conditionRating: Math.round(calculateAverage("conditionRating")),
+        feeRating: Math.round(calculateAverage("feeRating")),
+        durationRating: Math.round(calculateAverage("durationRating")),
+        customerSatisfaction: Math.round(
           (calculateAverage("serviceRating") +
             calculateAverage("conditionRating") +
             calculateAverage("feeRating") +
             calculateAverage("durationRating")) /
-          4,
-        serviceRating: calculateAverage("serviceRating"),
-        conditionRating: calculateAverage("conditionRating"),
-        feeRating: calculateAverage("feeRating"),
-        durationRating: calculateAverage("durationRating"),
+          4 * 20 // Convert 0-5 rating to percentage
+        ),
       }
     })
 
     // Calculate overall statistics
+    const totalExpectedFeedbacks = serviceCenters.length * 
+      (startDate && endDate 
+        ? Math.ceil((new Date(endDate).getTime() - new Date(startDate).getTime()) / (1000 * 60 * 60 * 24))
+        : 30) * 3 // 3 feedbacks per day expected
+
     const overallStats = {
       totalFeedback: feedbacks.length,
       averageRating:
         feedbacks.length > 0
-          ? feedbacks.reduce(
+          ? Math.round(
+              feedbacks.reduce(
+                (sum, fb) =>
+                  sum +
+                  (fb.serviceRating +
+                    fb.conditionRating +
+                    fb.feeRating +
+                    fb.durationRating) /
+                    4,
+                0
+              ) / feedbacks.length
+            )
+          : 0,
+      responseRate: Math.round((feedbacks.length / totalExpectedFeedbacks) * 100),
+      customerSatisfaction: feedbacks.length > 0
+        ? Math.round(
+            feedbacks.reduce(
               (sum, fb) =>
                 sum +
                 (fb.serviceRating +
@@ -83,10 +124,9 @@ export async function GET(request: Request) {
                   fb.durationRating) /
                   4,
               0
-            ) / feedbacks.length
-          : 0,
-      responseRate: 92, // This would need to be calculated based on your business logic
-      customerSatisfaction: 89, // This would need to be calculated based on your business logic
+            ) / feedbacks.length * 20 // Convert 0-5 rating to percentage
+          )
+        : 0,
     }
 
     return NextResponse.json({
