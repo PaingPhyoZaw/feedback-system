@@ -66,12 +66,13 @@ export default function ReportsPage() {
     ? overallStats 
     : centerStats.find(c => c.id === selectedCenter)
 
-  // Previous month stats (mock data)
+  // Get previous month stats from API response
+  const { previousStats } = data
   const previousMonthStats = {
-    totalFeedback: overallStats.totalFeedback * 0.8,
-    averageRating: overallStats.averageRating - 0.2,
-    responseRate: overallStats.responseRate - 3,
-    customerSatisfaction: overallStats.customerSatisfaction - 2
+    totalFeedback: previousStats.totalFeedback,
+    averageRating: previousStats.averageRating,
+    responseRate: previousStats.responseRate,
+    customerSatisfaction: previousStats.customerSatisfaction
   }
 
   // Prepare time series data for the entire month

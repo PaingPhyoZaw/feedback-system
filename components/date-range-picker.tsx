@@ -63,20 +63,6 @@ export function DateRangePicker({
                   onClick={() => {
                     const today = new Date()
                     setDate({
-                      from: today,
-                      to: today,
-                    })
-                  }}
-                >
-                  Today
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs"
-                  onClick={() => {
-                    const today = new Date()
-                    setDate({
                       from: addDays(today, -7),
                       to: today,
                     })
