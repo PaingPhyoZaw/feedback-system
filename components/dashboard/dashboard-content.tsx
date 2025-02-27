@@ -52,12 +52,6 @@ export function DashboardContent() {
 
     // Initial fetch
     fetchDashboardData()
-
-    // Set up polling every 30 seconds
-    const intervalId = setInterval(fetchDashboardData, 30000)
-
-    // Cleanup interval on unmount
-    return () => clearInterval(intervalId)
   }, [])
 
   if (isLoading || !data) {
