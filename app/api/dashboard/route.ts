@@ -37,7 +37,7 @@ export async function GET() {
         }
       })
     ])
-
+    console.log('Current server time:', new Date());
     // Calculate rating averages for the chart
     const ratingData = calculateRatingData(feedbacks)
 
