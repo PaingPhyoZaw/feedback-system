@@ -36,7 +36,7 @@ A modern, real-time customer feedback collection and analytics platform built wi
 
 ## 📸 Screenshots
 
-![Feedback System Mockup](public/screenshots/Mockup1.png)
+![Feedback System Mockup](public/screenshots/Mockup1.jpg)
 
 More screenshots will be added showcasing:
 - User feedback interface
