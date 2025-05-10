@@ -2,6 +2,19 @@
 
 A modern, real-time customer feedback collection and analytics platform built with Next.js 14 and Prisma.
 
+## 🌐 Live Demo
+
+| Interface | URL | Description |
+|-----------|-----|-------------|
+| User Feedback | [https://feedback-system-five.vercel.app/](https://feedback-system-five.vercel.app/) | Public interface for users to submit feedback |
+| Admin Dashboard | [https://feedback-system-five.vercel.app/auth/login](https://feedback-system-five.vercel.app/auth/login) | Admin interface for reports and management |
+
+### Admin Credentials
+
+| Email | Password |
+|-------|----------|
+| admin@gmail.com | password |
+
 ## 🌟 Features
 
 - **Multi-language Support**: Built-in support for Myanmar and English languages
