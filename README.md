@@ -1,5 +1,5 @@
 # Customer Feedback System
-
+<img src="public/screenshots/Mockup1.jpg" alt="Feedback System Mockup" width="600"/>
 A modern, real-time customer feedback collection and analytics platform built with Next.js 14 and Prisma.
 
 ## 🌐 Live Demo
@@ -46,16 +46,6 @@ A modern, real-time customer feedback collection and analytics platform built wi
   - Prisma ORM
   - PostgreSQL Database
   - NextAuth.js (Authentication)
-
-## 📸 Screenshots
-
-![Feedback System Mockup](public/screenshots/Mockup1.jpg)
-
-More screenshots will be added showcasing:
-- User feedback interface
-- Admin dashboard
-- Analytics views
-- Report generation
 
 ## 🛠️ Installation
 
