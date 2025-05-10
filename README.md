@@ -1,6 +1,5 @@
 # Customer Feedback System
-<img src="public/screenshots/Mockup1.jpg" alt="Feedback System Mockup" width="800" height="450" style="object-fit: contain;"/>
-<img src="public/screenshots/Mockup2.jpg" alt="Feedback System Mockup" width="800" height="450" style="object-fit: contain;"/>
+<img src="public/screenshots/mockup.png" alt="Feedback System Mockup" width="800" height="450" style="object-fit: contain;"/>
 A modern, real-time customer feedback collection and analytics platform built with Next.js 14 and Prisma.
 
 ## 🌐 Live Demo
