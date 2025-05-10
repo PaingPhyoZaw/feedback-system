@@ -5,7 +5,6 @@ import { AuthProvider } from '@/components/AuthProvider'
 export const metadata: Metadata = {
   title: 'Feedback App',
   description: 'Feedback System For 1.Care Service Center',
-  generator: 'v0.dev',
   icons: {
     icon: '/favicon.png',
     shortcut: '/favicon.png',
